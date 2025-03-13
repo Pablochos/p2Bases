@@ -6,4 +6,3 @@ Trabajo 2: PL/SQL- Gestion de Pedidos en  Restaurante
 * David Santamaria Carrillo
 * Diego Guerrero Monzon
 
-borrar
