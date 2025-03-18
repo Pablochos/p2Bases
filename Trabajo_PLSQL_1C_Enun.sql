@@ -157,9 +157,11 @@ end;
 
 ------ Deja aquí tus respuestas a las preguntas del enunciado:
 -- NO SE CORREGIRÁN RESPUESTAS QUE NO ESTÉN AQUÍ (utiliza el espacio que necesites apra cada una)
--- * P4.1
+-- * P4.1 En el código actual, se garantiza que el personal no supere el límite de 5 
+--        pedidos activos mediante una consulta a la tabla personal_servicio para obtener 
+--        el valor de pedidos_activos. Si este valor es >= 5, se lanza la excepción -20003.
 --
--- * P4.2
+-- * P4.2 
 --
 -- * P4.3
 --
