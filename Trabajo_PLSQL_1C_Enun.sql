@@ -58,8 +58,27 @@ create or replace procedure registrar_pedido(
     arg_id_primer_plato INTEGER DEFAULT NULL,
     arg_id_segundo_plato INTEGER DEFAULT NULL
 ) is 
+    plato_no_disponible exception;
+    pragma exception_init(plato_no_disponible, -20001);
+    msg_plato_no_disponible constant varchar(50) := 'Uno de los platos seleccionados no esta disponible';
+    
+    no_hay_platos exception;
+    pragma exception_init(no_hay_platos, -20002);
+    msg_no_hay_platos constant varchar(50) := 'El pedido debe contener al menos un plato';
+    
+    Personal_saturado exception;
+    pragma exception_init(Personal_saturado, -20003);
+    msg_Personal_saturado constant varchar(50) := 'El personal de servicio tiene demasiados pedidos.';
+    
+    primer_plato_inexsistente exception;
+    pragma exception_init(primer_plato_inexsistente, -20004);
+    msg_primer_plato_inexsistente constant varchar(50) := 'El primer plato seleccionado no existe';
+    
+    segundo_plato_inexsistente exception;
+    pragma exception_init(segundo_plato_inexsistente, -20004);
+    msg_segundo_plato_inexsistente constant varchar(50) := 'El segundo plato seleccionado no existe';
  begin
-  null; -- sustituye esta línea por tu código
+  
 end;
 /
 
