@@ -78,7 +78,80 @@ create or replace procedure registrar_pedido(
     pragma exception_init(segundo_plato_inexsistente, -20004);
     msg_segundo_plato_inexsistente constant varchar(50) := 'El segundo plato seleccionado no existe';
  begin
-  
+ 
+ --Comprobamos que al menos se ha seleccionado un plato.
+    IF arg_id_primer_plato IS NULL AND arg_id_segundo_plato IS NULL THEN
+        --lanzamos la excepción con el código -20002.
+        RAISE no_hay_platos;
+    END IF;
+
+-- Comprobar que el personal de servicio no tiene más de 5 pedidos activos.
+    -- Si el personal tiene mas de 5 pedidos activos salta una excepción.
+    SELECT pedidos_activos INTO v_pedidos_activos
+    FROM personal_servicio
+    WHERE id_personal = arg_id_personal;
+
+    IF v_pedidos_activos >= 5 THEN
+        -- Lanzamos la excepción del código -20003.
+        RAISE personal_saturado;
+    END IF;
+    
+ -- Comprobamos la disponibilidad y existencia del primer plato. 
+ -- Si no hay existencias del primer plato seleccionado o no esta disponible en estos momentos salta la excepcion.
+    IF arg_id_primer_plato IS NOT NULL THEN
+        BEGIN
+            SELECT disponible INTO v_primer_plato_disponible
+            FROM platos
+            WHERE id_plato = arg_id_primer_plato;
+            
+            IF NOT v_primer_plato_disponible THEN
+                RAISE plato_no_disponible;
+            END IF;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                -- Lanzamos la excepción con el código -20004.
+                RAISE primer_plato_inexsistente;
+        END;
+    END IF;
+    
+     -- Comprobamos disponibilidad y existencia del segundo plato, al igual que hemos hecho con los primeros platos
+     -- Si no hay existencias del segundo plato seleccionado o no esta disponible en estos momentos salta la excepción.
+    IF arg_id_segundo_plato IS NOT NULL THEN
+        BEGIN
+            SELECT disponible INTO v_segundo_plato_disponible
+            FROM platos
+            WHERE id_plato = arg_id_segundo_plato;
+            
+            IF NOT v_segundo_plato_disponible THEN
+                RAISE plato_no_disponible;
+            END IF;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                -- Lanzamos la excepción con el código -20004.
+                 RAISE segundo_plato_inexsistente;
+        END;
+    END IF;
+     
+  -- Calcular el total del pedido
+    IF arg_id_primer_plato IS NOT NULL THEN
+        SELECT precio INTO v_total_pedido
+        FROM platos
+        WHERE id_plato = arg_id_primer_plato;
+    END IF;
+
+    IF arg_id_segundo_plato IS NOT NULL THEN
+        DECLARE
+            v_precio_segundo_plato DECIMAL(10, 2);
+        BEGIN
+            -- Obtener el precio del segundo plato
+            SELECT precio INTO v_precio_segundo_plato
+            FROM platos
+            WHERE id_plato = arg_id_segundo_plato;
+
+            -- Sumar el precio del segundo plato al total
+            v_total_pedido := v_total_pedido + v_precio_segundo_plato;
+        END;
+    END IF;
 end;
 /
 
