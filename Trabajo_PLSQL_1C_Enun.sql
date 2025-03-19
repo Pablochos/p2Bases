@@ -64,8 +64,10 @@ create or replace procedure registrar_pedido(
     v_segundo_plato_disponible BOOLEAN;
 
     -- Excepciones
+    
     plato_no_disponible EXCEPTION;
     PRAGMA EXCEPTION_INIT(plato_no_disponible, -20001);
+    
     no_hay_platos EXCEPTION;
     PRAGMA EXCEPTION_INIT(no_hay_platos, -20002);
     Personal_saturado EXCEPTION;
@@ -76,35 +78,27 @@ create or replace procedure registrar_pedido(
     PRAGMA EXCEPTION_INIT(segundo_plato_inexsistente, -20004);
 
 BEGIN
-    -- Verificar al menos un plato
-    IF arg_id_primer_plato IS NULL AND arg_id_segundo_plato IS NULL THEN
-        RAISE_APPLICATION_ERROR(-20002, 'El pedido debe contener al menos un plato.');
-    END IF;
 
-    -- Bloquear fila del personal para evitar concurrencia
-    SELECT pedidos_activos INTO v_pedidos_activos 
-    FROM personal_servicio 
-    WHERE id_personal = arg_id_personal
-    FOR UPDATE; -- Bloqueo explícito
+    -- Verificar si el plato está disponible
+    SELECT disponible INTO v_disponible
+    FROM platos
+    WHERE id_plato = p_id_plato;
 
-    -- Verificar límite de pedidos
-    IF v_pedidos_activos >= 5 THEN
-        RAISE_APPLICATION_ERROR(-20003, 'El personal de servicio tiene demasiados pedidos.');
-    END IF;
+    -- Si el plato no está disponible, lanzar la excepción
+    IF NOT v_disponible THEN
+        RAISE plato_no_disponible;
+    END IF;
 
-    -- Comprobar platos
+    -- Comprobamos platos
     IF arg_id_primer_plato IS NOT NULL THEN
         BEGIN
             SELECT disponible INTO v_primer_plato_disponible 
             FROM platos 
-            WHERE id_plato = arg_id_primer_plato
-            FOR UPDATE; -- Bloqueo para concurrencia
+            WHERE id_plato = arg_id_primer_plato;
+            
             IF NOT v_primer_plato_disponible THEN
-                RAISE plato_no_disponible;
+                RAISE primer_plato_inexistente;
             END IF;
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20004, 'El primer plato seleccionado no existe.');
         END;
     END IF;
 
@@ -112,16 +106,32 @@ BEGIN
         BEGIN
             SELECT disponible INTO v_segundo_plato_disponible 
             FROM platos 
-            WHERE id_plato = arg_id_segundo_plato
-            FOR UPDATE; -- Bloqueo para concurrencia
+            WHERE id_plato = arg_id_segundo_plato;
+            
             IF NOT v_segundo_plato_disponible THEN
-                RAISE plato_no_disponible;
+                RAISE segundo_plato_inexistente;
             END IF;
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20004, 'El segundo plato seleccionado no existe.');
         END;
     END IF;
+    
+    
+    -- Verificar que han pedido al menos un plato.
+    IF arg_id_primer_plato IS NULL AND arg_id_segundo_plato IS NULL THEN
+        RAISE no_hay_platos;
+    END IF;
+
+    -- Comprobar que el personal de servicio no tiene más de 5 pedidos activos
+    BEGIN
+        SELECT pedidos_activos INTO v_pedidos_activos
+        FROM personal_servicio
+        WHERE id_personal = arg_id_personal;
+    END;
+
+    IF v_pedidos_activos >= 5 THEN
+        RAISE personal_saturado;
+    END IF;
+
+    
 
     -- Insertar pedido
     v_id_pedido := seq_pedidos.NEXTVAL;
@@ -148,11 +158,17 @@ BEGIN
 
 EXCEPTION
     WHEN plato_no_disponible THEN
-        ROLLBACK;
         RAISE_APPLICATION_ERROR(-20001, 'Uno de los platos seleccionados no está disponible.');
+    WHEN no_hay_platos THEN
+        RAISE_APPLICATION_ERROR(-20002, 'El pedido debe contener al menos un plato');
+     WHEN personal_saturado THEN
+        RAISE_APPLICATION_ERROR(-20003, 'El personal de servicio tiene demasiados pedidos.');
+    WHEN primer_plato_inexistente THEN
+        RAISE_APPLICATION_ERROR(-20004, 'El primer plato seleccionado no existe.');
+    WHEN segundo_plato_inexistente THEN
+        RAISE_APPLICATION_ERROR(-20004, 'El segundo plato seleccionado no existe.');
     WHEN OTHERS THEN
         ROLLBACK;
-        RAISE;
 END;
 /
 
