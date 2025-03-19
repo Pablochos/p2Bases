@@ -1,3 +1,55 @@
+DROP TABLE detalle_pedido CASCADE CONSTRAINTS;
+DROP TABLE pedidos CASCADE CONSTRAINTS;
+DROP TABLE platos CASCADE CONSTRAINTS;
+DROP TABLE personal_servicio CASCADE CONSTRAINTS;
+DROP TABLE clientes CASCADE CONSTRAINTS;
+
+DROP SEQUENCE seq_pedidos;
+
+
+-- Creación de tablas y secuencias
+
+
+
+create sequence seq_pedidos;
+
+CREATE TABLE clientes (
+    id_cliente INTEGER PRIMARY KEY,
+    nombre VARCHAR2(100) NOT NULL,
+    apellido VARCHAR2(100) NOT NULL,
+    telefono VARCHAR2(20)
+);
+
+CREATE TABLE personal_servicio (
+    id_personal INTEGER PRIMARY KEY,
+    nombre VARCHAR2(100) NOT NULL,
+    apellido VARCHAR2(100) NOT NULL,
+    pedidos_activos INTEGER DEFAULT 0 CHECK (pedidos_activos <= 5)
+);
+
+CREATE TABLE platos (
+    id_plato INTEGER PRIMARY KEY,
+    nombre VARCHAR2(100) NOT NULL,
+    precio DECIMAL(10, 2) NOT NULL,
+    disponible BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE pedidos (
+    id_pedido INTEGER PRIMARY KEY,
+    id_cliente INTEGER REFERENCES clientes(id_cliente),
+    id_personal INTEGER REFERENCES personal_servicio(id_personal),
+    fecha_pedido DATE DEFAULT SYSDATE,
+    total DECIMAL(10, 2) DEFAULT 0
+);
+
+CREATE TABLE detalle_pedido (
+    id_pedido INTEGER REFERENCES pedidos(id_pedido),
+    id_plato INTEGER REFERENCES platos(id_plato),
+    cantidad INTEGER NOT NULL,
+    PRIMARY KEY (id_pedido, id_plato)
+);
+
+
 -- Procedimiento corregido para registrar pedidos
 create or replace procedure registrar_pedido(
     arg_id_cliente      INTEGER, 
@@ -195,3 +247,4 @@ END;
 
 set serveroutput on;
 exec test_registrar_pedido;
+
