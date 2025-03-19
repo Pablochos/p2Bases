@@ -57,11 +57,15 @@ create or replace procedure registrar_pedido(
     arg_id_primer_plato INTEGER DEFAULT NULL,
     arg_id_segundo_plato INTEGER DEFAULT NULL
 ) is 
+    v_disponible BOOLEAN;
     v_pedidos_activos INTEGER;
-    v_total_pedido DECIMAL(10,2) := 0;
-    v_id_pedido INTEGER;
     v_primer_plato_disponible BOOLEAN;
     v_segundo_plato_disponible BOOLEAN;
+    v_id_pedido INTEGER;
+    
+    v_total_pedido DECIMAL(10,2) := 0;
+    
+    
 
     -- Excepciones
     
@@ -78,16 +82,28 @@ create or replace procedure registrar_pedido(
     PRAGMA EXCEPTION_INIT(segundo_plato_inexsistente, -20004);
 
 BEGIN
-
-    -- Verificar si el plato está disponible
-    SELECT disponible INTO v_disponible
-    FROM platos
-    WHERE id_plato = p_id_plato;
-
+    BEGIN
+        -- Verificar si el plato está disponible
+        SELECT disponible INTO v_disponible
+        FROM platos
+        WHERE id_plato = p_id_plato;
+    END;
+    
     -- Si el plato no está disponible, lanzar la excepción
     IF NOT v_disponible THEN
         RAISE plato_no_disponible;
-    END IF;
+    END IF;
+
+    -- Comprobar que el personal de servicio no tiene más de 5 pedidos activos
+    BEGIN
+        SELECT pedidos_activos INTO v_pedidos_activos
+        FROM personal_servicio
+        WHERE id_personal = arg_id_personal;
+    END;
+
+    IF v_pedidos_activos >= 5 THEN
+        RAISE personal_saturado;
+    END IF;
 
     -- Comprobamos platos
     IF arg_id_primer_plato IS NOT NULL THEN
@@ -119,18 +135,6 @@ BEGIN
     IF arg_id_primer_plato IS NULL AND arg_id_segundo_plato IS NULL THEN
         RAISE no_hay_platos;
     END IF;
-
-    -- Comprobar que el personal de servicio no tiene más de 5 pedidos activos
-    BEGIN
-        SELECT pedidos_activos INTO v_pedidos_activos
-        FROM personal_servicio
-        WHERE id_personal = arg_id_personal;
-    END;
-
-    IF v_pedidos_activos >= 5 THEN
-        RAISE personal_saturado;
-    END IF;
-
     
 
     -- Insertar pedido
@@ -169,13 +173,13 @@ EXCEPTION
         RAISE_APPLICATION_ERROR(-20004, 'El segundo plato seleccionado no existe.');
     WHEN OTHERS THEN
         ROLLBACK;
+        RAISE;
 END;
 /
 
 ------ Respuestas a las preguntas:
 -- * P4.1
--- Se utiliza FOR UPDATE al consultar pedidos_activos para bloquear la fila, evitando que otras transacciones modifiquen el valor hasta que se complete la transacción actual.
-
+-- Comprobamos el numero de pedidos activos que tiene el personal indicado para ese pedido, si no es 5 o superior entonces no salta la excepcion y no se para la transaccion.
 -- * P4.2
 -- El bloqueo (FOR UPDATE) garantiza que solo una transacción pueda actualizar pedidos_activos a la vez. Otras transacciones esperan hasta que se libere el bloqueo.
 
