@@ -58,6 +58,9 @@ create or replace procedure registrar_pedido(
     arg_id_primer_plato INTEGER DEFAULT NULL,
     arg_id_segundo_plato INTEGER DEFAULT NULL
 ) is 
+
+    v_pedidos_activos INTEGER;
+    
     plato_no_disponible exception;
     pragma exception_init(plato_no_disponible, -20001);
     msg_plato_no_disponible constant varchar(50) := 'Uno de los platos seleccionados no esta disponible';
