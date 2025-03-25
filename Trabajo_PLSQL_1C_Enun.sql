@@ -31,7 +31,7 @@ CREATE TABLE platos (
     id_plato INTEGER PRIMARY KEY,
     nombre VARCHAR2(100) NOT NULL,
     precio DECIMAL(10, 2) NOT NULL,
-    disponible BOOLEAN DEFAULT TRUE
+    disponible INTEGER DEFAULT 1 CHECK (DISPONIBLE in (0,1))
 );
 
 CREATE TABLE pedidos (
@@ -195,74 +195,76 @@ END;
 -- Estrategia defensiva: Validaciones manuales + bloqueos. Se evitan inconsistencias con FOR UPDATE y transacciones atómicas.
 
 -- Procedimiento de test completo
+create or replace
+procedure reset_seq( p_seq_name varchar )
+is
+    l_val number;
+begin
+    execute immediate
+    'select ' || p_seq_name || '.nextval from dual' INTO l_val;
+
+    execute immediate
+    'alter sequence ' || p_seq_name || ' increment by -' || l_val || 
+                                                          ' minvalue 0';
+    execute immediate
+    'select ' || p_seq_name || '.nextval from dual' INTO l_val;
+
+    execute immediate
+    'alter sequence ' || p_seq_name || ' increment by 1 minvalue 0';
+
+end;
+/
+
+
+create or replace procedure inicializa_test is
+begin
+    
+    reset_seq('seq_pedidos');
+        
+  
+    delete from Detalle_pedido;
+    delete from Pedidos;
+    delete from Platos;
+    delete from Personal_servicio;
+    delete from Clientes;
+    
+    -- Insertar datos de prueba
+    insert into Clientes (id_cliente, nombre, apellido, telefono) values (1, 'Pepe', 'Perez', '123456789');
+    insert into Clientes (id_cliente, nombre, apellido, telefono) values (2, 'Ana', 'Garcia', '987654321');
+    
+    insert into Personal_servicio (id_personal, nombre, apellido, pedidos_activos) values (1, 'Carlos', 'Lopez', 0);
+    insert into Personal_servicio (id_personal, nombre, apellido, pedidos_activos) values (2, 'Maria', 'Fernandez', 5);
+    
+    insert into Platos (id_plato, nombre, precio, disponible) values (1, 'Sopa', 10.0, 1);
+    insert into Platos (id_plato, nombre, precio, disponible) values (2, 'Pasta', 12.0, 1);
+    insert into Platos (id_plato, nombre, precio, disponible) values (3, 'Carne', 15.0, 0);
+
+    commit;
+end;
+/
+
+exec inicializa_test;
+
+-- Completa lost test, incluyendo al menos los del enunciado y añadiendo los que consideres necesarios
+
 create or replace procedure test_registrar_pedido is
 begin
-    -- Caso 1: Pedido válido
-    BEGIN
-        inicializa_test;
-        registrar_pedido(1, 1, 1, 2);
-        DBMS_OUTPUT.PUT_LINE('Caso 1: OK');
-    EXCEPTION
-        WHEN OTHERS THEN
-            DBMS_OUTPUT.PUT_LINE('Caso 1: ERROR - ' || SQLERRM);
-    END;
+	 
+  --caso 1 Pedido correct, se realiza
+  begin
+    inicializa_test;
+  end;
+  
+  -- Idem para el resto de casos
 
-    -- Caso 2: Pedido vacío
-    BEGIN
-        inicializa_test;
-        registrar_pedido(1, 1);
-        DBMS_OUTPUT.PUT_LINE('Caso 2: ERROR - No lanzó excepción');
-    EXCEPTION
-        WHEN OTHERS THEN
-            IF SQLCODE = -20002 THEN
-                DBMS_OUTPUT.PUT_LINE('Caso 2: OK');
-            ELSE
-                DBMS_OUTPUT.PUT_LINE('Caso 2: ERROR - ' || SQLERRM);
-            END IF;
-    END;
-
-    -- Caso 3: Plato no existe
-    BEGIN
-        inicializa_test;
-        registrar_pedido(1, 1, 99);
-        DBMS_OUTPUT.PUT_LINE('Caso 3: ERROR - No lanzó excepción');
-    EXCEPTION
-        WHEN OTHERS THEN
-            IF SQLCODE = -20004 THEN
-                DBMS_OUTPUT.PUT_LINE('Caso 3: OK');
-            ELSE
-                DBMS_OUTPUT.PUT_LINE('Caso 3: ERROR - ' || SQLERRM);
-            END IF;
-    END;
-
-    -- Caso 4: Personal saturado
-    BEGIN
-        inicializa_test;
-        registrar_pedido(1, 2, 1);
-        DBMS_OUTPUT.PUT_LINE('Caso 4: ERROR - No lanzó excepción');
-    EXCEPTION
-        WHEN OTHERS THEN
-            IF SQLCODE = -20003 THEN
-                DBMS_OUTPUT.PUT_LINE('Caso 4: OK');
-            ELSE
-                DBMS_OUTPUT.PUT_LINE('Caso 4: ERROR - ' || SQLERRM);
-            END IF;
-    END;
-
-    -- Caso 5: Plato no disponible
-    BEGIN
-        inicializa_test;
-        registrar_pedido(1, 1, 3);
-        DBMS_OUTPUT.PUT_LINE('Caso 5: ERROR - No lanzó excepción');
-    EXCEPTION
-        WHEN OTHERS THEN
-            IF SQLCODE = -20001 THEN
-                DBMS_OUTPUT.PUT_LINE('Caso 5: OK');
-            ELSE
-                DBMS_OUTPUT.PUT_LINE('Caso 5: ERROR - ' || SQLERRM);
-            END IF;
-    END;
-END;
+  /* - Si se realiza un pedido vac´ıo (sin platos) devuelve el error -200002.
+     - Si se realiza un pedido con un plato que no existe devuelve en error -20004.
+     - Si se realiza un pedido que incluye un plato que no est´a ya disponible devuelve el error -20001.
+     - Personal de servicio ya tiene 5 pedidos activos y se le asigna otro pedido devuelve el error -20003
+     - ... los que os puedan ocurrir que puedan ser necesarios para comprobar el correcto funcionamiento del procedimiento
+*/
+  
+end;
 /
 
 set serveroutput on;
