@@ -62,7 +62,6 @@ create or replace procedure registrar_pedido(
     v_primer_plato_disponible INTEGER;
     v_segundo_plato_disponible INTEGER;
     v_id_pedido INTEGER;
-    
     v_total_pedido DECIMAL(10,2) := 0;
     
     
@@ -81,6 +80,13 @@ create or replace procedure registrar_pedido(
 
 
 BEGIN
+
+    -- Verificar que han pedido al menos un plato.
+    IF arg_id_primer_plato IS NULL AND arg_id_segundo_plato IS NULL THEN
+        RAISE no_hay_platos;
+    END IF;
+    
+    
     BEGIN
         -- Verificar si el plato está disponible
         SELECT disponible INTO v_disponible
@@ -89,7 +95,7 @@ BEGIN
     END;
     
     -- Si el plato no está disponible, lanzar la excepción
-    IF NOT v_disponible THEN
+    IF v_disponible = 0 THEN
         RAISE plato_no_disponible;
     END IF;
     
@@ -101,7 +107,7 @@ BEGIN
     END;
     
     -- Si el plato no está disponible, lanzar la excepción
-    IF NOT v_disponible THEN
+    IF v_disponible = 0 THEN
         RAISE plato_no_disponible;
     END IF;
 
@@ -123,7 +129,7 @@ BEGIN
             FROM platos 
             WHERE id_plato = arg_id_primer_plato;
             
-            IF NOT v_primer_plato_disponible THEN
+            IF v_primer_plato_disponible = 0 THEN
                 RAISE_APPLICATION_ERROR(-20004, 'El primer plato seleccionado no existe.');
             END IF;
         END;
@@ -135,16 +141,10 @@ BEGIN
             FROM platos 
             WHERE id_plato = arg_id_segundo_plato;
             
-            IF NOT v_segundo_plato_disponible THEN
+            IF v_segundo_plato_disponible = 0 THEN
                 RAISE_APPLICATION_ERROR(-20004, 'El segundo plato seleccionado no existe.');
             END IF;
         END;
-    END IF;
-    
-    
-    -- Verificar que han pedido al menos un plato.
-    IF arg_id_primer_plato IS NULL AND arg_id_segundo_plato IS NULL THEN
-        RAISE no_hay_platos;
     END IF;
     
 
