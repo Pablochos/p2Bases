@@ -57,24 +57,24 @@ create or replace procedure registrar_pedido(
     arg_id_primer_plato INTEGER DEFAULT NULL,
     arg_id_segundo_plato INTEGER DEFAULT NULL
 ) is 
+    -- Declaramos las variables que vamos a usar
     v_disponible INTEGER;
     v_pedidos_activos INTEGER;
-    v_primer_plato_disponible INTEGER;
-    v_segundo_plato_disponible INTEGER;
     v_id_pedido INTEGER;
     v_total_pedido DECIMAL(10,2) := 0;
     
     
-
-    -- Excepciones
+    -- Declaramos las excepciones que vamos a usar
     
     plato_no_disponible EXCEPTION;
     PRAGMA EXCEPTION_INIT(plato_no_disponible, -20001);
     
     no_hay_platos EXCEPTION;
     PRAGMA EXCEPTION_INIT(no_hay_platos, -20002);
+    
     Personal_saturado EXCEPTION;
     PRAGMA EXCEPTION_INIT(Personal_saturado, -20003);
+    
     plato_inexistente EXCEPTION;
     PRAGMA EXCEPTION_INIT(plato_inexistente, -20004);
 
@@ -86,100 +86,101 @@ BEGIN
         RAISE no_hay_platos;
     END IF;
     
-    
-    BEGIN
-        -- Verificar si el plato está disponible
-        SELECT disponible INTO v_disponible
-        FROM platos
-        WHERE id_plato = arg_id_primer_plato;
-    END;
-    
-    -- Si el plato no está disponible, lanzar la excepción
-    IF v_disponible = 0 THEN
-        RAISE plato_no_disponible;
+    -- Comprobamos que el primer plato existe y si esta disponible
+    IF arg_id_primer_plato IS NOT NULL THEN
+        BEGIN
+            -- Verificar si el plato está disponible
+            SELECT disponible INTO v_disponible
+            FROM platos
+            WHERE id_plato = arg_id_primer_plato;
+            
+             -- Si el plato no está disponible, lanzar la excepción
+            IF v_disponible = 0 THEN
+                RAISE plato_no_disponible;
+            END IF;
+            
+            EXCEPTION
+            -- En caso de que no exista el plato se lanza se recoge la excepcion NO_DATA_FOUND
+                WHEN NO_DATA_FOUND THEN
+                    RAISE_APPLICATION_ERROR(-20004, 'El primer plato seleccionado no existe.'); 
+        END;
     END IF;
     
-    BEGIN
-        -- Verificar si el plato está disponible
-        SELECT disponible INTO v_disponible
-        FROM platos
-        WHERE id_plato = v_segundo_plato_disponible;
-    END;
-    
-    -- Si el plato no está disponible, lanzar la excepción
-    IF v_disponible = 0 THEN
-        RAISE plato_no_disponible;
+    -- Comprobamos que el segundo plato existe y si esta disponible
+    IF arg_id_segundo_plato IS NOT NULL THEN
+        BEGIN
+            -- Verificar si el plato está disponible
+            SELECT disponible INTO v_disponible
+            FROM platos
+            WHERE id_plato = arg_id_segundo_plato;
+            
+            -- Si el plato no está disponible, lanzar la excepción
+            IF v_disponible = 0 THEN
+                RAISE plato_no_disponible;
+            END IF;
+            
+            EXCEPTION
+            -- En caso de que no exista el plato se lanza se recoge la excepcion NO_DATA_FOUND
+                WHEN NO_DATA_FOUND THEN
+                RAISE_APPLICATION_ERROR(-20004, 'El segundo plato seleccionado no existe.');
+        END;
     END IF;
+    
 
     -- Comprobar que el personal de servicio no tiene más de 5 pedidos activos
     BEGIN
         SELECT pedidos_activos INTO v_pedidos_activos
         FROM personal_servicio
-        WHERE id_personal = arg_id_personal;
+        WHERE id_personal = arg_id_personal
+        FOR UPDATE;
+        
+        IF v_pedidos_activos >= 5 THEN
+            RAISE personal_saturado;
+        END IF;
     END;
-
-    IF v_pedidos_activos >= 5 THEN
-        RAISE personal_saturado;
-    END IF;
-
-    -- Comprobamos platos
-    IF arg_id_primer_plato IS NOT NULL THEN
-        BEGIN
-            SELECT disponible INTO v_primer_plato_disponible 
-            FROM platos 
-            WHERE id_plato = arg_id_primer_plato;
-            
-            IF v_primer_plato_disponible = 0 THEN
-                RAISE_APPLICATION_ERROR(-20004, 'El primer plato seleccionado no existe.');
-            END IF;
-        END;
-    END IF;
-
-    IF arg_id_segundo_plato IS NOT NULL THEN
-        BEGIN
-            SELECT disponible INTO v_segundo_plato_disponible 
-            FROM platos 
-            WHERE id_plato = arg_id_segundo_plato;
-            
-            IF v_segundo_plato_disponible = 0 THEN
-                RAISE_APPLICATION_ERROR(-20004, 'El segundo plato seleccionado no existe.');
-            END IF;
-        END;
-    END IF;
     
-
+    -- Tras comprobar todo realizamos los inserts.
+    
     -- Insertar pedido
     v_id_pedido := seq_pedidos.NEXTVAL;
     INSERT INTO pedidos (id_pedido, id_cliente, id_personal, fecha_pedido, total)
     VALUES (v_id_pedido, arg_id_cliente, arg_id_personal, SYSDATE, v_total_pedido);
 
-    -- Insertar detalles
+    -- Insertar el plato 1 en el pedido
     IF arg_id_primer_plato IS NOT NULL THEN
         INSERT INTO detalle_pedido (id_pedido, id_plato, cantidad)
         VALUES (v_id_pedido, arg_id_primer_plato, 1);
     END IF;
-
+    
+    -- Insertar el plato 2 en el pedido
     IF arg_id_segundo_plato IS NOT NULL THEN
         INSERT INTO detalle_pedido (id_pedido, id_plato, cantidad)
         VALUES (v_id_pedido, arg_id_segundo_plato, 1);
     END IF;
-
-    -- Actualizar pedidos activos
+    
+    -- Actualizar pedidos activos en el personal
     UPDATE personal_servicio 
     SET pedidos_activos = pedidos_activos + 1 
     WHERE id_personal = arg_id_personal;
 
+    -- Hacemos commit y liberamos el bloqueo en la linea del servicio
     COMMIT;
 
+-- Bloque de excepciones
 EXCEPTION
+
     WHEN plato_no_disponible THEN
         RAISE_APPLICATION_ERROR(-20001, 'Uno de los platos seleccionados no está disponible.');
+        
     WHEN no_hay_platos THEN
         RAISE_APPLICATION_ERROR(-20002, 'El pedido debe contener al menos un plato');
-     WHEN personal_saturado THEN
+        
+    WHEN personal_saturado THEN
         RAISE_APPLICATION_ERROR(-20003, 'El personal de servicio tiene demasiados pedidos.');
+        
+    -- En caso de que sea una excepcion nueva o no controlada se recoge aqui
     WHEN OTHERS THEN
-        ROLLBACK;
+        ROLLBACK;  -- Siempre hacer rollback por si acaso
         RAISE;
 END;
 /
