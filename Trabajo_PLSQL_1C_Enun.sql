@@ -57,10 +57,10 @@ create or replace procedure registrar_pedido(
     arg_id_primer_plato INTEGER DEFAULT NULL,
     arg_id_segundo_plato INTEGER DEFAULT NULL
 ) is 
-    v_disponible BOOLEAN;
+    v_disponible INTEGER;
     v_pedidos_activos INTEGER;
-    v_primer_plato_disponible BOOLEAN;
-    v_segundo_plato_disponible BOOLEAN;
+    v_primer_plato_disponible INTEGER;
+    v_segundo_plato_disponible INTEGER;
     v_id_pedido INTEGER;
     
     v_total_pedido DECIMAL(10,2) := 0;
@@ -76,17 +76,28 @@ create or replace procedure registrar_pedido(
     PRAGMA EXCEPTION_INIT(no_hay_platos, -20002);
     Personal_saturado EXCEPTION;
     PRAGMA EXCEPTION_INIT(Personal_saturado, -20003);
-    primer_plato_inexsistente EXCEPTION;
-    PRAGMA EXCEPTION_INIT(primer_plato_inexsistente, -20004);
-    segundo_plato_inexsistente EXCEPTION;
-    PRAGMA EXCEPTION_INIT(segundo_plato_inexsistente, -20004);
+    plato_inexistente EXCEPTION;
+    PRAGMA EXCEPTION_INIT(plato_inexistente, -20004);
+
 
 BEGIN
     BEGIN
         -- Verificar si el plato está disponible
         SELECT disponible INTO v_disponible
         FROM platos
-        WHERE id_plato = p_id_plato;
+        WHERE id_plato = arg_id_primer_plato;
+    END;
+    
+    -- Si el plato no está disponible, lanzar la excepción
+    IF NOT v_disponible THEN
+        RAISE plato_no_disponible;
+    END IF;
+    
+    BEGIN
+        -- Verificar si el plato está disponible
+        SELECT disponible INTO v_disponible
+        FROM platos
+        WHERE id_plato = v_segundo_plato_disponible;
     END;
     
     -- Si el plato no está disponible, lanzar la excepción
@@ -113,7 +124,7 @@ BEGIN
             WHERE id_plato = arg_id_primer_plato;
             
             IF NOT v_primer_plato_disponible THEN
-                RAISE primer_plato_inexistente;
+                RAISE_APPLICATION_ERROR(-20004, 'El primer plato seleccionado no existe.');
             END IF;
         END;
     END IF;
@@ -125,7 +136,7 @@ BEGIN
             WHERE id_plato = arg_id_segundo_plato;
             
             IF NOT v_segundo_plato_disponible THEN
-                RAISE segundo_plato_inexistente;
+                RAISE_APPLICATION_ERROR(-20004, 'El segundo plato seleccionado no existe.');
             END IF;
         END;
     END IF;
@@ -167,10 +178,6 @@ EXCEPTION
         RAISE_APPLICATION_ERROR(-20002, 'El pedido debe contener al menos un plato');
      WHEN personal_saturado THEN
         RAISE_APPLICATION_ERROR(-20003, 'El personal de servicio tiene demasiados pedidos.');
-    WHEN primer_plato_inexistente THEN
-        RAISE_APPLICATION_ERROR(-20004, 'El primer plato seleccionado no existe.');
-    WHEN segundo_plato_inexistente THEN
-        RAISE_APPLICATION_ERROR(-20004, 'El segundo plato seleccionado no existe.');
     WHEN OTHERS THEN
         ROLLBACK;
         RAISE;
