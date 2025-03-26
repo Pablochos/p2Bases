@@ -187,20 +187,23 @@ END;
 
 ------ Respuestas a las preguntas:
 -- * P4.1
--- Comprobamos el numero de pedidos activos que tiene el personal indicado para ese pedido, si no es 5 o superior entonces no salta la excepcion y no se para la transaccion.
+-- Comprobamos el numero de pedidos activos que tiene el personal comprobando que no tiene 5 o mas pedidos activos, en caso contrario salta una excepcion y hacemos rollback.
+
 -- * P4.2
--- El bloqueo (FOR UPDATE) garantiza que solo una transacción pueda actualizar pedidos_activos a la vez. Otras transacciones esperan hasta que se libere el bloqueo.
+-- Gracias a la linea For Update en el select de pedidos activos podemos bloquear la linea que indiquemos, el personal indicado en este caso, y asi asegurarnos que ningun otro usuario va a poder usar ese personal 
+-- hasta que en nuestra trasaccion no hagamos un commit o un rollback
 
 -- * P4.3
--- No completamente. Aunque se usan bloqueos, en entornos altamente concurrentes, se recomienda usar SERIALIZABLE o manejar reintentos para garantizar consistencia.
+-- 
 
 -- * P4.4
--- La restricción CHECK sería redundante. Se debe capturar ORA-02290 y convertirla en -20003. Ejemplo:
--- EXCEPTION WHEN OTHERS THEN
---     IF SQLCODE = -2290 THEN RAISE_APPLICATION_ERROR(-20003, ...);
+-- La implicación en el código sería que siempre saltaría la excepción ya que el número de platos siempre va a ser menor que 5 a mo ser que iniciemos la base de datos con al menos 6 platos por servidor.
+-- En la gestion de excepciones siempre saltaria la misma que es la de personal_saturado ya que como hemos explicado antes al iniciar la base de datos disponemos de 0 platos asignados a cada servidor.
+-- Ahora mismo si el if se cumple saltaria la excepcion de personal_saturado y si no se cumple sigue la ejecucion normalmente, ante la nueva condicion deberiamos cambiar de lugar la forma de hacerlo, osea
+-- si la condicion se cumple el codigo va a continuar normalmente pero ne caso de que no se cumpla es cuando va a saltar la excepcion.
 
 -- * P4.5
--- Estrategia defensiva: Validaciones manuales + bloqueos. Se evitan inconsistencias con FOR UPDATE y transacciones atómicas.
+-- La estrategia es defensiva porque primero comprobamos todas las excepciones y posibles errores, y una vez que sabemos que todo está correcto es entonces cuando realizamos los inserts.
 
 -- Procedimiento de test completo
 create or replace
