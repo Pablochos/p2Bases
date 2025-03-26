@@ -260,7 +260,7 @@ exec inicializa_test;
 create or replace procedure test_registrar_pedido is
 begin
     DBMS_OUTPUT.PUT_LINE('=== BATERÍA DE TESTS ===');
-  --caso 1 Pedido correct, se realiza
+  
   
   -- Test 2: Pedido vacío - Debe devolver error -20002
     begin
@@ -282,7 +282,17 @@ begin
             DBMS_OUTPUT.PUT_LINE('Resultado: ' || SQLERRM);
     END;
     
-     -- Test 4: Personal con 5 pedidos
+    -- Test 4: Plato no disponible (error -20001)
+    BEGIN
+        inicializa_test;
+        DBMS_OUTPUT.PUT_LINE('--- CASO: PLATO NO DISPONIBLE ---');
+        registrar_pedido(1, 1, 3, NULL);
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Resultado: ' || SQLERRM);
+    END;
+    
+     -- Test 5: Personal con 5 pedidos
     BEGIN
         inicializa_test;
         DBMS_OUTPUT.PUT_LINE('Test 4: Personal con 5 pedidos');
