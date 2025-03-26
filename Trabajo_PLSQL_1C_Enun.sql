@@ -260,7 +260,39 @@ exec inicializa_test;
 create or replace procedure test_registrar_pedido is
 begin
     DBMS_OUTPUT.PUT_LINE('=== BATERÍA DE TESTS ===');
-  
+    
+    -- Test 1: Probar pedido con primer y/o seguno plato
+    begin
+        inicializa_test;
+        DBMS_OUTPUT.PUT_LINE('--- CASO: PROBAR PRIMER Y/O SEGUNDO PLATO---');
+    
+        -- prueba 1. Probar pedido con ambos platos
+        BEGIN
+            registrar_pedido(1, 1, 1, 2); -- Cliente 1, Personal 1, Platos 1 y 2
+            DBMS_OUTPUT.PUT_LINE('Éxito: Pedido completo registrado');
+        EXCEPTION
+            WHEN OTHERS THEN
+                DBMS_OUTPUT.PUT_LINE('Fallo: ' || SQLERRM);
+        END;
+    
+        -- prueba 2. Probar pedido solo con primer plato
+        BEGIN
+            registrar_pedido(2, 1, 1, NULL); -- Solo plato 1
+            DBMS_OUTPUT.PUT_LINE('Éxito: Pedido solo primer plato registrado');
+        EXCEPTION
+            WHEN OTHERS THEN
+                DBMS_OUTPUT.PUT_LINE('Fallo: ' || SQLERRM);
+        END;
+    
+        -- prueba 3. Probar pedido solo con segundo plato
+        BEGIN
+            registrar_pedido(1, 1, NULL, 2); -- Solo plato 2
+            DBMS_OUTPUT.PUT_LINE('Éxito: Pedido solo segundo plato registrado');
+        EXCEPTION
+            WHEN OTHERS THEN
+                DBMS_OUTPUT.PUT_LINE('Fallo: ' || SQLERRM);
+        END;
+    end;
   
   -- Test 2: Pedido vacío - Debe devolver error -20002
     begin
@@ -299,7 +331,7 @@ begin
         registrar_pedido(1, 2, 1, NULL); -- Personal 2 tiene 5 pedidos
     EXCEPTION
         WHEN OTHERS THEN
-            DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('Resultado: ' || SQLERRM);
     END;
 
   
