@@ -63,7 +63,6 @@ create or replace procedure registrar_pedido(
     v_id_pedido INTEGER;
     v_total_pedido DECIMAL(10,2) := 0;
     
-    
     -- Declaramos las excepciones que vamos a usar
     
     plato_no_disponible EXCEPTION;
@@ -260,11 +259,29 @@ exec inicializa_test;
 
 create or replace procedure test_registrar_pedido is
 begin
-	 
+    DBMS_OUTPUT.PUT_LINE('=== BATERÍA DE TESTS ===');
   --caso 1 Pedido correct, se realiza
-  begin
+  
+  -- Test 2: Pedido vacío - Debe devolver error -20002
+    begin
     inicializa_test;
-  end;
+        DBMS_OUTPUT.PUT_LINE('--- CASO: PROBAMOS PEDIDO VACÍO ---');
+        registrar_pedido(1, 1, NULL, NULL);
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Resultado: ' || SQLERRM);
+    END;
+    
+    -- Test 3: Plato no existe - Debe devolver error -20004
+    begin 
+        inicializa_test;
+        DBMS_OUTPUT.PUT_LINE('--- CASO: PLATO NO EXISTE ---');
+        registrar_pedido(1, 1, 999, NULL); --Plato con ID 999 no existe
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Resultado: ' || SQLERRM);
+    END;
+
   
   -- Idem para el resto de casos
 
