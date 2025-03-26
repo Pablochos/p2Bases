@@ -281,6 +281,16 @@ begin
         WHEN OTHERS THEN
             DBMS_OUTPUT.PUT_LINE('Resultado: ' || SQLERRM);
     END;
+    
+     -- Test 4: Personal con 5 pedidos
+    BEGIN
+        inicializa_test;
+        DBMS_OUTPUT.PUT_LINE('Test 4: Personal con 5 pedidos');
+        registrar_pedido(1, 2, 1, NULL); -- Personal 2 tiene 5 pedidos
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+    END;
 
   
   -- Idem para el resto de casos
