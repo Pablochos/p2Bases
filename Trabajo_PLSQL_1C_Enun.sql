@@ -62,6 +62,7 @@ create or replace procedure registrar_pedido(
     v_pedidos_activos INTEGER;
     v_id_pedido INTEGER;
     v_total_pedido DECIMAL(10,2) := 0;
+    v_precio_plato DECIMAL (10,2);
     
     -- Declaramos las excepciones que vamos a usar
     
@@ -89,7 +90,7 @@ BEGIN
     IF arg_id_primer_plato IS NOT NULL THEN
         BEGIN
             -- Verificar si el plato está disponible
-            SELECT disponible INTO v_disponible
+            SELECT disponible, precio  INTO v_disponible, v_precio_plato
             FROM platos
             WHERE id_plato = arg_id_primer_plato;
             
@@ -97,6 +98,9 @@ BEGIN
             IF v_disponible = 0 THEN
                 RAISE plato_no_disponible;
             END IF;
+            
+            -- Sumar el precio del plato al total
+            v_total_pedido := v_total_pedido + v_precio_plato;
             
             EXCEPTION
             -- En caso de que no exista el plato se lanza se recoge la excepcion NO_DATA_FOUND
@@ -109,7 +113,7 @@ BEGIN
     IF arg_id_segundo_plato IS NOT NULL THEN
         BEGIN
             -- Verificar si el plato está disponible
-            SELECT disponible INTO v_disponible
+            SELECT disponible, precio INTO v_disponible, v_precio_plato
             FROM platos
             WHERE id_plato = arg_id_segundo_plato;
             
@@ -117,6 +121,9 @@ BEGIN
             IF v_disponible = 0 THEN
                 RAISE plato_no_disponible;
             END IF;
+            
+            -- Sumar el precio del plato al total
+            v_total_pedido := v_total_pedido + v_precio_plato;
             
             EXCEPTION
             -- En caso de que no exista el plato se lanza se recoge la excepcion NO_DATA_FOUND
@@ -261,10 +268,10 @@ create or replace procedure test_registrar_pedido is
 begin
     DBMS_OUTPUT.PUT_LINE('=== BATERÍA DE TESTS ===');
     
-    -- Test 1: Probar pedido con primer y/o seguno plato
+    -- Test 1: Probar pedido con primer y/o seguno plato disponibles y personal con capacidad
     begin
-        inicializa_test;
-        DBMS_OUTPUT.PUT_LINE('--- CASO: PROBAR PRIMER Y/O SEGUNDO PLATO---');
+        
+        DBMS_OUTPUT.PUT_LINE('--- CASO 1: PROBAR PRIMER Y/O SEGUNDO PLATO Y PERSONAL CON CAPACIDAD---');
     
         -- prueba 1. Probar pedido con ambos platos
         BEGIN
@@ -288,61 +295,92 @@ begin
         BEGIN
             registrar_pedido(1, 1, NULL, 2); -- Solo plato 2
             DBMS_OUTPUT.PUT_LINE('Éxito: Pedido solo segundo plato registrado');
+
         EXCEPTION
             WHEN OTHERS THEN
                 DBMS_OUTPUT.PUT_LINE('Fallo: ' || SQLERRM);
         END;
     end;
+    DBMS_OUTPUT.PUT_LINE('');
   
   -- Test 2: Pedido vacío - Debe devolver error -20002
     begin
-    inicializa_test;
-        DBMS_OUTPUT.PUT_LINE('--- CASO: PROBAMOS PEDIDO VACÍO ---');
+        
+        DBMS_OUTPUT.PUT_LINE('--- CASO 2: PROBAMOS PEDIDO VACÍO ---');
         registrar_pedido(1, 1, NULL, NULL);
+        DBMS_OUTPUT.PUT_LINE('Fallo: ha registrado el pedido sin platos');
     EXCEPTION
         WHEN OTHERS THEN
-            DBMS_OUTPUT.PUT_LINE('Resultado: ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('Exito: ' || SQLERRM);
     END;
+    DBMS_OUTPUT.PUT_LINE('');
     
     -- Test 3: Plato no existe - Debe devolver error -20004
+    -- Probamos con el primer plato
     begin 
-        inicializa_test;
-        DBMS_OUTPUT.PUT_LINE('--- CASO: PLATO NO EXISTE ---');
+        
+        DBMS_OUTPUT.PUT_LINE('--- CASO 3: PLATO NO EXISTE ---');
         registrar_pedido(1, 1, 999, NULL); --Plato con ID 999 no existe
+        DBMS_OUTPUT.PUT_LINE('Fallo: Ha creado un pedido con un plato inexistente');
     EXCEPTION
         WHEN OTHERS THEN
-            DBMS_OUTPUT.PUT_LINE('Resultado: ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('Exito: ' || SQLERRM);
     END;
+    
+    -- Probamos con el segundo plato
+    begin 
+        
+        registrar_pedido(1, 1, NULL, 999); --Plato con ID 999 no existe
+        DBMS_OUTPUT.PUT_LINE('Fallo: Ha creado un pedido con un plato inexistente');
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Exito: ' || SQLERRM);
+    END;
+    DBMS_OUTPUT.PUT_LINE('');
     
     -- Test 4: Plato no disponible (error -20001)
     BEGIN
-        inicializa_test;
-        DBMS_OUTPUT.PUT_LINE('--- CASO: PLATO NO DISPONIBLE ---');
+        
+        DBMS_OUTPUT.PUT_LINE('--- CASO 4: PLATO NO DISPONIBLE ---');
         registrar_pedido(1, 1, 3, NULL);
+        DBMS_OUTPUT.PUT_LINE('Fallo: Ha creado un pedido con platos no disponibles');
     EXCEPTION
         WHEN OTHERS THEN
-            DBMS_OUTPUT.PUT_LINE('Resultado: ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('Exito: ' || SQLERRM);
     END;
+    DBMS_OUTPUT.PUT_LINE('');
     
      -- Test 5: Personal con 5 pedidos
     BEGIN
-        inicializa_test;
-        DBMS_OUTPUT.PUT_LINE('Test 4: Personal con 5 pedidos');
+        DBMS_OUTPUT.PUT_LINE('--- CASO 5: PERSONAL DE SERVICIO LLENO --');
         registrar_pedido(1, 2, 1, NULL); -- Personal 2 tiene 5 pedidos
+        DBMS_OUTPUT.PUT_LINE('Fallo: Ha asignado un pedido a un personal de servicio saturado');
     EXCEPTION
         WHEN OTHERS THEN
-            DBMS_OUTPUT.PUT_LINE('Resultado: ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('Exito: ' || SQLERRM);
     END;
+    DBMS_OUTPUT.PUT_LINE('');
+    
+    -- Test 6: Comprobar que en un pedido de varios platos el precio es correcto
+    DECLARE
+        v_total_pedido DECIMAL(10,2) := 0;
+    BEGIN
+        inicializa_test();
+        DBMS_OUTPUT.PUT_LINE('--- CASO 6: COMPROBAR PRECIO TOTAL --');
+        registrar_pedido(1, 1, 1, 2); -- Uso un plato que cuesta 10 y otro que cuesta 12
+        
+        SELECT total INTO v_total_pedido
+        FROM pedidos
+        WHERE id_cliente = 1 AND id_personal = 1;
+        
+        IF v_total_pedido = 22 THEN
+            DBMS_OUTPUT.PUT_LINE('Exito: Se calcula bien el total de los platos');
+        ELSE
+        
+            DBMS_OUTPUT.PUT_LINE('Fallo: No se ha calculado bien el total de los platos');
+        END IF;
 
-  
-  -- Idem para el resto de casos
-
-  /* - Si se realiza un pedido vac´ıo (sin platos) devuelve el error -200002.
-     - Si se realiza un pedido con un plato que no existe devuelve en error -20004.
-     - Si se realiza un pedido que incluye un plato que no est´a ya disponible devuelve el error -20001.
-     - Personal de servicio ya tiene 5 pedidos activos y se le asigna otro pedido devuelve el error -20003
-     - ... los que os puedan ocurrir que puedan ser necesarios para comprobar el correcto funcionamiento del procedimiento
-*/
+    END;
   
 end;
 /
