@@ -193,14 +193,15 @@ END;
 
 ------ Respuestas a las preguntas:
 -- * P4.1
--- Comprobamos el numero de pedidos activos que tiene el personal comprobando que no tiene 5 o mas pedidos activos, en caso contrario salta una excepcion y hacemos rollback.
+-- Comprobamos el numero de pedidos activos que tiene el personal, comprobando que no tiene 5 o mas pedidos activos, en caso contrario salta una excepcion y hacemos rollback.
 
 -- * P4.2
--- Gracias a la linea For Update en el select de pedidos activos podemos bloquear la linea que indiquemos, el personal indicado en este caso, y asi asegurarnos que ningun otro usuario va a poder usar ese personal 
+-- Gracias a la linea For Update en el select de pedidos activos podemos bloquear la linea que indiquemos, al personal indicado en este caso, y asi asegurarnos que ningun otro usuario va a poder usar ese personal 
 -- hasta que en nuestra trasaccion no hagamos un commit o un rollback
 
 -- * P4.3
--- 
+-- Gracias a la linea For Update  en la comprobacion de pedidos libres del personal podemos bloquear a esa persona para que no acepte mas pedidos concurrentes hasta que nuestra transaccion termine en un rollback o commit, haciendo que nunca se pueda
+-- asignar 2 platos a la veza 1 solo personal.
 
 -- * P4.4
 -- La implicación en el código sería que siempre saltaría la excepción ya que el número de platos siempre va a ser menor que 5 a mo ser que iniciemos la base de datos con al menos 6 platos por servidor.
