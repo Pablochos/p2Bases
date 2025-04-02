@@ -338,7 +338,7 @@ begin
             DBMS_OUTPUT.PUT_LINE('Exito: ' || SQLERRM);
     END;
     DBMS_OUTPUT.PUT_LINE('');
-    
+ 
     -- Test 4: Plato no disponible (error -20001)
     BEGIN
         
@@ -362,12 +362,49 @@ begin
     END;
     DBMS_OUTPUT.PUT_LINE('');
     
-    -- Test 6: Comprobar que en un pedido de varios platos el precio es correcto
+        --Test 6: Comprobacion de creacion de filas
+    BEGIN
+    inicializa_test();
+    DBMS_OUTPUT.PUT_LINE('--- CASO 6: COMPROBAR LA CREACION DE FILAS ---');
+    
+    -- Registrar un pedido válido
+    registrar_pedido(1, 1, 1, 2);
+    
+    -- Verificar que el pedido fue insertado en la tabla pedidos
+    declare
+        v_count_pedidos NUMBER;
+        v_count_detalle NUMBER;
+    begin
+        SELECT COUNT(*) INTO v_count_pedidos FROM pedidos;
+        IF v_count_pedidos = 1 THEN
+            DBMS_OUTPUT.PUT_LINE('Éxito: Pedido registrado en la tabla pedidos.');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Fallo: El pedido no se registró en la tabla pedidos.');
+        END IF;
+        
+        -- Verificar que los platos fueron insertados en la tabla detalle_pedido
+        SELECT COUNT(*) INTO v_count_detalle FROM detalle_pedido;
+        IF v_count_detalle = 2 THEN
+            DBMS_OUTPUT.PUT_LINE('Éxito: Platos registrados en la tabla detalle_pedido.');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Fallo: Los platos no se registraron correctamente en detalle_pedido.');
+        END IF;
+    end;
+    
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Fallo: ' || SQLERRM);
+         END;
+    DBMS_OUTPUT.PUT_LINE('');
+    
+    
+    -- Test 7: Comprobar que en un pedido de varios platos el precio es correcto
     DECLARE
         v_total_pedido DECIMAL(10,2) := 0;
     BEGIN
         inicializa_test();
-        DBMS_OUTPUT.PUT_LINE('--- CASO 6: COMPROBAR PRECIO TOTAL --');
+        DBMS_OUTPUT.PUT_LINE('--- CASO 7: COMPROBAR PRECIO TOTAL --');
         registrar_pedido(1, 1, 1, 2); -- Uso un plato que cuesta 10 y otro que cuesta 12
         
         SELECT total INTO v_total_pedido
